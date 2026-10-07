@@ -14,6 +14,7 @@
 
 static const char *pattern;
 static bool ignore_case;
+static bool files_only;
 
 static bool matches(const char *name) {
     if (!ignore_case) return strstr(name, pattern) != NULL;
@@ -46,7 +47,8 @@ static char *join(const char *dir, const char *name) {
 static int search_path(const char *path, const char *name, FILE *out) {
     struct stat st;
     if (lstat(path, &st) < 0) { perror(path); return 1; }
-    if (matches(name) && fprintf(out, "%s\n", path) < 0) return 1;
+    if (matches(name) && (!files_only || S_ISREG(st.st_mode)) &&
+        fprintf(out, "%s\n", path) < 0) return 1;
     if (!S_ISDIR(st.st_mode)) return 0; /* Do not follow symbolic links. */
     DIR *dir = opendir(path);
     if (!dir) { perror(path); return 1; }
@@ -89,14 +91,15 @@ static int worker(const char *root, unsigned index, unsigned workers, FILE *out)
 }
 
 static void usage(const char *program) {
-    fprintf(stderr, "Usage: %s [-i] [-j workers] ROOT PATTERN\n", program);
+    fprintf(stderr, "Usage: %s [-i] [-f] [-j workers] ROOT PATTERN\n", program);
 }
 
 int main(int argc, char **argv) {
     unsigned workers = 4;
     int opt;
-    while ((opt = getopt(argc, argv, "ij:")) != -1) {
+    while ((opt = getopt(argc, argv, "ifj:")) != -1) {
         if (opt == 'i') ignore_case = true;
+        else if (opt == 'f') files_only = true;
         else if (opt == 'j') {
             char *end;
             errno = 0;

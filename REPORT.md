@@ -26,6 +26,7 @@ Worker เขียนผลลง anonymous temporary file ของตนเ�
 ## คุณสมบัติและข้อจำกัด
 
 - ค้นหา substring ของชื่อไฟล์และ directory แบบ case sensitive หรือ ASCII case insensitive (`-i`)
+- ใช้ `-f` เพื่อแสดงเฉพาะไฟล์ปกติ โดยยังค้นหาผ่านโฟลเดอร์ย่อย
 - จำกัด worker 1–64 เพื่อไม่สร้าง process มากเกินไป
 - ไม่ตาม symbolic link เพื่อหลีกเลี่ยง directory cycle
 - งานแบ่งตามจำนวนรายการใน root ไม่ใช่ขนาด subtree: หาก subtree หนึ่งใหญ่เป็นพิเศษ อาจเกิด worker ที่ทำงานนานกว่า
