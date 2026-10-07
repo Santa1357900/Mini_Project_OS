@@ -12,7 +12,8 @@ cmp "$tmp/one" "$tmp/four"
 [ "$(wc -l < "$tmp/four")" -eq 3 ]
 ./psearch -j 2 "$tmp" Report > "$tmp/case"
 [ "$(wc -l < "$tmp/case")" -eq 1 ]
-./psearch -f -i "$tmp" report > "$tmp/files"
+./psearch -f -i "$tmp" report > "$tmp/files" 2> "$tmp/timing"
 [ "$(wc -l < "$tmp/files")" -eq 2 ]
+grep -Eq '^Time: [0-9]+\.[0-9]{3} s$' "$tmp/timing"
 if ./psearch -j 0 "$tmp" report >/dev/null 2>&1; then exit 1; fi
 echo "All tests passed"

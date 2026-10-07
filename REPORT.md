@@ -27,6 +27,8 @@ Worker เขียนผลลง anonymous temporary file ของตนเ�
 
 - ค้นหา substring ของชื่อไฟล์และ directory แบบ case sensitive หรือ ASCII case insensitive (`-i`)
 - ใช้ `-f` เพื่อแสดงเฉพาะไฟล์ปกติ โดยยังค้นหาผ่านโฟลเดอร์ย่อย
+- ใช้ `clock_gettime(CLOCK_MONOTONIC)` จับเวลาภายในโปรแกรม แสดง `Time: ... s` ทาง `stderr` โดย path ที่พบอยู่ทาง `stdout`
+- ข้ามรายการที่ไม่มีสิทธิ์อ่านโดยไม่แสดงข้อความผิดพลาด ผลลัพธ์จึงอาจไม่ครอบคลุมทุกโฟลเดอร์
 - จำกัด worker 1–64 เพื่อไม่สร้าง process มากเกินไป
 - ไม่ตาม symbolic link เพื่อหลีกเลี่ยง directory cycle
 - งานแบ่งตามจำนวนรายการใน root ไม่ใช่ขนาด subtree: หาก subtree หนึ่งใหญ่เป็นพิเศษ อาจเกิด worker ที่ทำงานนานกว่า

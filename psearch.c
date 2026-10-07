@@ -10,11 +10,17 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 static const char *pattern;
 static bool ignore_case;
 static bool files_only;
+
+static double elapsed_seconds(const struct timespec *start, const struct timespec *end) {
+    return (double)(end->tv_sec - start->tv_sec) +
+           (double)(end->tv_nsec - start->tv_nsec) / 1000000000.0;
+}
 
 static bool matches(const char *name) {
     if (!ignore_case) return strstr(name, pattern) != NULL;
@@ -46,12 +52,12 @@ static char *join(const char *dir, const char *name) {
 
 static int search_path(const char *path, const char *name, FILE *out) {
     struct stat st;
-    if (lstat(path, &st) < 0) { perror(path); return 1; }
+    if (lstat(path, &st) < 0) return 0; /* Skip inaccessible or removed entries. */
     if (matches(name) && (!files_only || S_ISREG(st.st_mode)) &&
         fprintf(out, "%s\n", path) < 0) return 1;
     if (!S_ISDIR(st.st_mode)) return 0; /* Do not follow symbolic links. */
     DIR *dir = opendir(path);
-    if (!dir) { perror(path); return 1; }
+    if (!dir) return 0; /* A protected directory must not stop the search. */
     int failed = 0;
     struct dirent *ent;
     errno = 0;
@@ -63,8 +69,8 @@ static int search_path(const char *path, const char *name, FILE *out) {
         free(child);
         errno = 0;
     }
-    if (errno) { perror(path); failed = 1; }
-    if (closedir(dir) < 0) { perror(path); failed = 1; }
+    /* Directory read errors are skipped; stdout remains paths only. */
+    closedir(dir);
     return failed;
 }
 
@@ -84,8 +90,8 @@ static int worker(const char *root, unsigned index, unsigned workers, FILE *out)
         free(path);
         errno = 0;
     }
-    if (errno) { perror(root); failed = 1; }
-    if (closedir(dir) < 0) { perror(root); failed = 1; }
+    if (errno) failed = 1;
+    if (closedir(dir) < 0) failed = 1;
     if (fflush(out) == EOF) { perror("temporary output"); failed = 1; }
     return failed;
 }
@@ -116,7 +122,11 @@ int main(int argc, char **argv) {
         fprintf(stderr, "ROOT must be an accessible directory: %s\n", root);
         return 2;
     }
-
+    struct timespec started_at, finished_at;
+    if (clock_gettime(CLOCK_MONOTONIC, &started_at) < 0) {
+        perror("timer");
+        return 1;
+    }
     /* Separate output files avoid pipe deadlocks and interleaved lines. */
     FILE **results = calloc(workers, sizeof(*results));
     pid_t *pids = calloc(workers, sizeof(*pids));
@@ -152,5 +162,10 @@ int main(int argc, char **argv) {
     free(results);
     free(pids);
     if (fflush(stdout) == EOF) failed = 1;
+    if (clock_gettime(CLOCK_MONOTONIC, &finished_at) < 0) {
+        perror("timer");
+        return 1;
+    }
+    fprintf(stderr, "Time: %.3f s\n", elapsed_seconds(&started_at, &finished_at));
     return failed ? 1 : 0;
 }
